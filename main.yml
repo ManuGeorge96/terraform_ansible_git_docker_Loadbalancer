@@ -1,0 +1,151 @@
+---
+- name: "Deploy"
+  hosts: localhost
+  tasks:  
+    - name: "Initiating Terraform"
+      community.general.terraform:
+        project_path: "./terraform/"
+        force_init: true
+        state: present
+      register: terraform
+
+    - name: "Setting Dynamic Inventory File"
+      add_host:
+        groups: "aws"
+        name: "{{ item }}"
+        ansible_user: "ec2-user"
+        ansible_ssh_port: "22"
+        ansible_ssh_private_key_file: "./key.key" 
+        ansible_host: "{{ item }}"
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+      with_items: 
+        - "{{ terraform.outputs.ServerPublicIP.value }}"
+
+- name: "Provision"
+  hosts: aws
+  vars:
+    repo: https://github.com/ManuGeorge96/simple_flask_app.git
+    image_name: simple
+    docker_user: mdockanu
+    docker_pass: Manu@DOCKER1996
+    ct_name: app   
+    packages:
+      - docker
+      - git
+      - pip  
+  become: true
+  tasks:
+    - name: "Updating"
+      yum:
+        name: '*'
+        state: present
+
+    - name: "Installing"
+      yum: 
+        name: "{{ packages }}"
+        state: present
+    
+    - name: "Checking Docker module"
+      pip:
+        name: docker-py
+        state: present
+    
+    - name: "Starting/Re-starting Docker"
+      service:
+        name: docker
+        state: restarted
+        enabled: true
+      register: start    
+
+           #     - name: "Install docker compose" 
+           # get_url:
+           #  url: https://github.com/docker/compose/releases/download/1.27.3/docker-compose-Linux-x86_64
+           #  dest: /bin/docker-compose
+           #  mode: 755
+
+    - name: "Pulling Docker file and Flask Script from Git"
+      git:
+        repo: "{{ repo }}"
+        dest: /usr/local/src/git_file/ 
+      register: pull_status    
+
+    - name: "Authenticating Docker Hub"
+      docker_login:
+        username: "{{ docker_user }}"
+        password: "{{ docker_pass }}"   
+        state: present 
+          #      when: start.changed == true or pull_status.changed == true     
+
+    - name: "Building Image From Docker File"
+      docker_image:
+        build:
+          path: /usr/local/src/git_file/
+          pull: true  
+        name: "{{ docker_user }}/{{ image_name }}"
+        tag: "{{ item }}"
+        source: build
+        push: yes
+        force_tag: true
+        force_source: true
+      with_items: 
+        - "{{ pull_status.after }}"
+        - latest  
+          # when: pull_status.changed    
+
+    - name: "Loging out From Docker Hub"
+      docker_login:
+        username: "{{ docker_user }}"
+        password: "{{ docker_pass }}"
+        state: absent
+          #  when: start.changed == true or pull_status.changed == true
+        ############################################################ Build Finished ###############
+
+    - name: "Pulling Latest Image form Hub"
+      docker_image:
+        name: "{{ docker_user }}/{{ image_name }}:latest"
+        source: pull
+        force_source: true
+        state: present
+      register: pull_status   
+    
+    - name: "Create network"
+      docker_network:
+        name: "network_one"
+      register: nw    
+
+    - name: "Building Containers with {{ docker_user }}/{{ image_name }}:latest"
+      docker_container:
+        name: "{{ ct_name }}-{{ item }}"
+        image: "{{ docker_user }}/{{ image_name }}:latest"
+        recreate: true
+        networks:
+          - name: "network_one"  
+        state: started
+      with_sequence: count=2  
+      when: pull_status.changed
+
+    - name: "Setting Nginx Conf"
+      template:
+        src: "./nginx.conf"
+        dest: "/usr/local/src/git_file/nginx/nginx.conf"
+      register: new    
+
+    - name: "Craeting Container Nginx to Load balance"
+      docker_image:
+        build:
+          path: /usr/local/src/git_file/nginx
+          pull: true
+        name: "nginx"
+        tag: "build"
+        force_tag: true    
+      when: new.changed    
+
+    - name: "Starting nginx container"
+      docker_container:
+        name: "nginx"
+        image: "nginx:build"
+        networks:
+          - name: "network_one"
+        state: started
+        published_ports: 80:80 
+      when: new.chnaged == true or nw.changed ==true     
