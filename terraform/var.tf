@@ -1,8 +1,8 @@
 variable "access" {
-  default = "AKIA2CR7DPBBHJT3XCFJ"
+  default = "  "
 }
 variable "secret" {
-  default = "QsHvRHyl+bBL4f08PTfWYE+RXiQbX7Hnkg7vMA7d"
+  default = "  "
 }
 variable "region" {
   default = "ap-south-1"
@@ -19,5 +19,5 @@ variable "AZ" {
 }
 variable "port" {
   type = list
-  default = [ "22", "80", "443" ]
+  default = [ "22", "80" ]
 }

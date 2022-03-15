@@ -29,12 +29,13 @@
 - name: "Provision"
   hosts: aws
   vars:
-    repo: https://github.com/ManuGeorge96/simple_flask_app.git
+    repo: REPO_URL
     image_name: simple
-    docker_user: mdockanu
-    docker_pass: Manu@DOCKER1996
+    docker_user: DOCKER_USER
+    docker_pass: DOCKER_PASS
     ct_name: app
     network_name: network_one
+    ct_port: CONTAINER_PORT  
     serial: 1
     packages:
       - docker
@@ -71,12 +72,6 @@
         enabled: true
       register: start
       when: install.changed    
-
-           #     - name: "Install docker compose" 
-           # get_url:
-           #  url: https://github.com/docker/compose/releases/download/1.27.3/docker-compose-Linux-x86_64
-           #  dest: /bin/docker-compose
-           #  mode: 755
 
     - name: "Pulling Docker file and Flask Script from Git"
       git:
