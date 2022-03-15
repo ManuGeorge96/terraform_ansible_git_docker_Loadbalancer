@@ -21,6 +21,11 @@
       with_items: 
         - "{{ terraform.outputs.ServerPublicIP.value }}"
 
+    - name: "Waiting for the Instances"
+      wait_for:
+        timeout: 20
+      when: terraform.changed    
+
 - name: "Provision"
   hosts: aws
   vars:
@@ -28,7 +33,9 @@
     image_name: simple
     docker_user: mdockanu
     docker_pass: Manu@DOCKER1996
-    ct_name: app   
+    ct_name: app
+    network_name: network_one
+    serial: 1
     packages:
       - docker
       - git
@@ -40,22 +47,30 @@
         name: '*'
         state: present
 
+    - name: "Getting Installed packages"
+      package_facts:
+        manager: auto           
+
     - name: "Installing"
       yum: 
         name: "{{ packages }}"
         state: present
+      when: "'docker' not in ansible_facts.packages" 
+      register: install 
     
     - name: "Checking Docker module"
       pip:
         name: docker-py
         state: present
+      when: install.changed  
     
     - name: "Starting/Re-starting Docker"
       service:
         name: docker
         state: restarted
         enabled: true
-      register: start    
+      register: start
+      when: install.changed    
 
            #     - name: "Install docker compose" 
            # get_url:
@@ -74,8 +89,11 @@
         username: "{{ docker_user }}"
         password: "{{ docker_pass }}"   
         state: present 
-          #      when: start.changed == true or pull_status.changed == true     
+      when: start.changed == true or pull_status.changed == true 
+      register: login    
+      run_once: true
 
+        
     - name: "Building Image From Docker File"
       docker_image:
         build:
@@ -90,14 +108,16 @@
       with_items: 
         - "{{ pull_status.after }}"
         - latest  
-          # when: pull_status.changed    
+      when: pull_status.changed    
+      run_once: true  
 
     - name: "Loging out From Docker Hub"
       docker_login:
         username: "{{ docker_user }}"
         password: "{{ docker_pass }}"
         state: absent
-          #  when: start.changed == true or pull_status.changed == true
+      when: login.changed
+      run_once: true  
         ############################################################ Build Finished ###############
 
     - name: "Pulling Latest Image form Hub"
@@ -105,12 +125,11 @@
         name: "{{ docker_user }}/{{ image_name }}:latest"
         source: pull
         force_source: true
-        state: present
-      register: pull_status   
+        state: present   
     
     - name: "Create network"
       docker_network:
-        name: "network_one"
+        name: "{{ network_name }}"
       register: nw    
 
     - name: "Building Containers with {{ docker_user }}/{{ image_name }}:latest"
@@ -119,16 +138,16 @@
         image: "{{ docker_user }}/{{ image_name }}:latest"
         recreate: true
         networks:
-          - name: "network_one"  
+          - name: "{{ network_name }}"  
         state: started
       with_sequence: count=2  
-      when: pull_status.changed
+      when: pull_status.changed == true or nw.changed == true
 
     - name: "Setting Nginx Conf"
       template:
         src: "./nginx.conf"
         dest: "/usr/local/src/git_file/nginx/nginx.conf"
-      register: new    
+      register: nginxconf    
 
     - name: "Craeting Container Nginx to Load balance"
       docker_image:
@@ -136,16 +155,16 @@
           path: /usr/local/src/git_file/nginx
           pull: true
         name: "nginx"
-        tag: "build"
+        tag: "builds"
         force_tag: true    
-      when: new.changed    
+      when: nginxconf.changed    
 
     - name: "Starting nginx container"
       docker_container:
         name: "nginx"
-        image: "nginx:build"
+        image: "nginx:builds"
         networks:
-          - name: "network_one"
+          - name: "{{ network_name }}"
         state: started
         published_ports: 80:80 
-      when: new.chnaged == true or nw.changed ==true     
+      when: nginxconf.changed == true or nw.changed ==true     

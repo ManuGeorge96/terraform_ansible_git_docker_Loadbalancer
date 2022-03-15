@@ -179,4 +179,3 @@ resource "aws_lb_listener_rule" "Rule" {
     Project = var.project
   }
 }
-    
