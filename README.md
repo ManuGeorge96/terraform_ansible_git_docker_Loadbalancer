@@ -13,7 +13,7 @@ This is an ansible playbook, it make use of terraform code to deploy aws infra( 
   - Create and configure Docker containers.
   - Pushes latest image to Docker HUB.
 
-- <b>terraform.main.tf</b>
+- <b>terraform/main.tf</b>
    - Setting UP VPC with mentioned CIDR block
    - Create EC2 instances, on the mentioned AZs.
    - Configure Application Load Balancer.
