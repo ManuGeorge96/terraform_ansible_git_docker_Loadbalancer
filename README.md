@@ -2,7 +2,7 @@
 
 ## About
 
-This is an ansible playbook, it make use of terraform code to deploy aws infra( EC2, ALB, SGs, VPC) and ansible yml to setup containers on the deployed EC2 instances, is then load balanced with Nginx.
+This is an ansible playbook, it make use of terraform code to deploy aws infra( EC2, ALB, SGs, VPC) and ansible yml to setup containers on the EC2 instances, which is then load balanced with a Nginx Container.
 
 ## Outline
 
