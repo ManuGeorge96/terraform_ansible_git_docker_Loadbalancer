@@ -18,4 +18,8 @@ This is an ansible playbook, it make use of terraform code to deploy aws infra( 
    - Create EC2 instances, on the mentioned AZs.
    - Configure Application Load Balancer.
 
+NOTE: not Included all the service just an outline below.
 
+[<img align="left" alt="Unix" width="700" src="https://raw.githubusercontent.com/ManuGeorge96/ManuGeorge96/master/Tools/terraform_ansible_git_docker_Loadbalancer.drawio.png" />][ln]
+
+[ln]: https://www.linkedin.com/in/manu-george-03453613a
