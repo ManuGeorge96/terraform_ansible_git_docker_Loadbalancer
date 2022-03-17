@@ -161,5 +161,6 @@
         networks:
           - name: "{{ network_name }}"
         state: started
+        recreate: true
         published_ports: 80:80 
       when: nginxconf.changed == true or nw.changed ==true     
