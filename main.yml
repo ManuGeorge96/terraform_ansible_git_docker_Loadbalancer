@@ -28,6 +28,7 @@
 
 - name: "Provision"
   hosts: aws
+  serial: 1
   vars:
     repo: REPO_URL
     image_name: simple
@@ -36,7 +37,6 @@
     ct_name: app
     network_name: network_one
     ct_port: CONTAINER_PORT  
-    serial: 1
     packages:
       - docker
       - git
