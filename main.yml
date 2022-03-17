@@ -77,7 +77,8 @@
       git:
         repo: "{{ repo }}"
         dest: /usr/local/src/git_file/ 
-      register: pull_status    
+      register: pull_status
+      run_once: true
 
     - name: "Authenticating Docker Hub"
       docker_login:
